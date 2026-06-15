@@ -1,69 +1,65 @@
-# TenantTrack
+# TenantTrack (Supabase Edition)
 
 ## 📌 Overview
-TenantTrack is a simple, mobile-friendly web application designed to manage the finances of an apartment block. It tracks tenants, monthly fees, expenses, income, and provides transparent financial reporting for all tenants.
+TenantTrack is a simple, mobile-friendly web application designed to manage the finances of an apartment block using **Supabase** for the database, authentication, and hosting. It tracks tenants, monthly fees, expenses, income, and provides transparent financial reporting.
 
 ---
 
 ## 🏠 Basic Needs
 
-- **[Finance Management](ca://s?q=Manage_apartment_block_finances)**: Track and manage all financial aspects of the apartment block.
-- **[Block Structure](ca://s?q=Apartment_block_structure)**: The block consists of multiple floors, each with several apartments.
-- **[Tenant Details](ca://s?q=Tenant_information)**: Each apartment stores tenant information (name, phone number, kids, cars, etc).
-- **[Monthly Records](ca://s?q=Monthly_expenses_and_income)**: Each month has its own expenses and income records.
-- **[Dashboard](ca://s?q=Tenant_dashboard)**: Displays tenant payments, monthly fees, and overall financial status.
-- **[Payment History](ca://s?q=Tenant_payment_history)**: View detailed payment history for each tenant.
-- **[Standard Expenses](ca://s?q=Standard_expenses_list)**: Includes water, electricity, doorman, elevator, etc.
-- **[Non-standard Expenses](ca://s?q=Manual_expenses_entry)**: Add custom expenses manually for specific months.
-- **[Tenant Income](ca://s?q=Tenant_income_entry)**: Record tenant payments with details (month, amount, date).
-- **[Maintenance Fund](ca://s?q=Maintenance_fund)**: Track long-term repair funds separate from monthly expenses.
-- **[Status Tracking](ca://s?q=Payment_status_tracking)**: Color-coded system:
-  - 🟢 Green: Paid  
-  - 🟡 Yellow: Partially Paid  
-  - 🔴 Red: Overdue  
+* **Finance Management**: Track and manage all financial aspects using a **PostgreSQL-backed relational database**.
+* **Block Structure**: Hierarchical structure mapping apartments, floors, and tenants.
+* **Tenant Details**: Structured profiles with standard fields and custom metadata.
+* **Monthly Records**: Monthly partitioning of expenses and income records.
+* **Dashboard**: Secure real-time UI showing payments and status.
+* **Payment History**: Detailed audit trail of all transactions.
+* **Expense Tracking**: Categorized standard (recurring) and non-standard (ad-hoc) expenses.
+* **Maintenance Fund**: A dedicated bucket for long-term reserves, tracked via transaction ledgers.
+* **Status Tracking**: Real-time calculated status (Green/Yellow/Red) via SQL views or database functions.
 
 ---
 
 ## ⚙️ Constraints
 
-- **[Mobile-Friendly Website](ca://s?q=Mobile_friendly_website)**: Accessible and responsive design.
-- **[Firebase Hosting](ca://s?q=Firebase_hosting)**: Deployed and hosted on Firebase.
-- **[No Backend](ca://s?q=No_backend_design)**: Simplified architecture without backend services.
-- **[Basic UI/UX](ca://s?q=Basic_UI_UX)**: Smooth and minimal user interface.
-- **[User Accounts](ca://s?q=Admin_and_tenant_accounts)**:
-  - Admin account: Full control and management.
-  - Tenant account: View-only access.
-- **[Data Export](ca://s?q=Export_data_to_excel)**: Export financial data as Excel sheets.
-- **[CI/CD](ca://s?q=CI_CD_for_deployment)**: Automated deployments and updates.
-- **[Minimal Dependencies](ca://s?q=Minimal_external_libraries)**: Lightweight system with few external libraries.
-- **[Transparency](ca://s?q=Public_finances_for_tenants)**: All financial records are visible to tenants.
+* **Mobile-Friendly Website**: Responsive design powered by modern frontend frameworks.
+* **Supabase Hosting**: Deployed using **Supabase CLI** and **Vercel** (or Supabase's native edge-hosting capabilities).
+* **Serverless Architecture**: Logic handled via **Supabase Edge Functions** (TypeScript), removing the need for a custom dedicated backend server.
+* **Row-Level Security (RLS)**: Fine-grained access control ensuring tenants only view their own data, while Admins have full access.
+* **User Accounts**: Managed via **Supabase Auth** (Email/Password or Magic Links), integrated with a `roles` table.
+* **Data Export**: Use SQL-based queries to generate CSVs or utilize libraries like `SheetJS` on the client side.
+* **CI/CD**: Streamlined deployment using GitHub Actions integrated with the Supabase project.
+* **Minimal Dependencies**: Utilizing the native `supabase-js` client for all data interactions.
+* **Transparency**: Financial records accessed via RLS-protected policies to ensure data integrity and trust.
 
 ---
 
 ## 🚀 Getting Started
 
-1. Clone the repository.
-2. Set up Firebase hosting.
-3. Deploy the app with CI/CD pipeline.
-4. Configure admin and tenant accounts.
-5. Start tracking finances transparently.
+1.  **Initialize Project**: Create a new project in the [Supabase Dashboard](https://supabase.com/dashboard).
+2.  **Define Schema**: Run your SQL migration scripts to set up tables (Users, Tenants, Payments, etc.) and establish Foreign Key relationships.
+3.  **Configure RLS**: Enable Row-Level Security on all tables to enforce data privacy (e.g., `CREATE POLICY "Tenants can only see their own records" ...`).
+4.  **Connect Client**: Install the `@supabase/supabase-js` library and initialize the client with your Project URL and Anon Key.
+5.  **Develop & Deploy**: Build your UI, connect via the JS client, and deploy to Vercel/Netlify for automatic CI/CD.
 
 ---
 
 ## 📊 Features Roadmap
-- Tenant dashboard with payment status.
-- Monthly expense and income tracking.
-- Exportable reports in Excel format.
-- Maintenance fund management.
-- Color-coded payment tracking system.
+
+* **Tenant Portal**: Secure login and dashboard.
+* **Admin Console**: Full CRUD operations for expenses, tenants, and funds.
+* **Reporting**: Automated data fetching for Excel/CSV exports.
+* **Real-time Alerts**: Use Supabase Realtime to update status (Green/Yellow/Red) instantly when a payment is logged.
 
 ---
 
-## 👥 Accounts
-- **Admin**: Full access to manage tenants, expenses, and income.
-- **Tenant**: View-only access to financial records and personal payment history.
+## 👥 Roles & Access
+
+* **Admin**: Role assigned in a `profiles` table; has `ALL` permissions via RLS policies.
+* **Tenant**: Authenticated users; RLS policies restrict their `SELECT` access to their `tenant_id` and public financial summaries.
 
 ---
 
 ## 📂 Data Transparency
-All finances are public to tenants, ensuring trust and accountability within the apartment block community.
+Financial data is stored relationally, allowing for complex joins. **Row-Level Security** ensures that while the database is a single source of truth, user visibility is strictly controlled, maintaining trust within the community.
+
+---

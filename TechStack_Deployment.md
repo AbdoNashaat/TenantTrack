@@ -1,6 +1,6 @@
 # 🛠️ Tech Stack
 
-Since the system operates entirely without a custom backend, the entire application logic, state calculation, and file generation (Excel exports) happen securely on the client side, leveraging Firebase's managed services.
+Since the system operates entirely without a custom backend, the entire application logic, state calculation, and file generation (Excel exports) happen securely on the client side, leveraging Supabase's managed services.
 
 ## Core Stack Components
 
@@ -8,9 +8,9 @@ Since the system operates entirely without a custom backend, the entire applicat
 | ------------------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Frontend Framework | React (via Vite)        | Provides a highly responsive, component-based environment ideal for interactive dashboards. Vite ensures the bundle remains minimal, fast, and mobile-friendly.                        |
 | Styling & UI       | Tailwind CSS            | Utility-first CSS framework that makes building a fully responsive, mobile-first design incredibly straightforward with minimal footprint.                                             |
-| Database           | Cloud Firestore         | A flexible NoSQL document database. It allows real-time synchronization for tenant dashboards and handles hierarchical structures like tracking expenses nested under specific months. |
-| Authentication     | Firebase Authentication | Manages secure sign-ins (Email/Password) and provides JWT tokens containing custom user claims (Admin vs. Tenant roles).                                                               |
-| Hosting            | Firebase Hosting        | Production-grade, secure, and globally distributed SSD hosting to serve the static SPA assets with instant rollbacks.                                                                  |
+| Database           | Supabase (PostgreSQL)   | A fully managed relational database built on PostgreSQL. It supports real-time subscriptions for tenant dashboards and structured querying for hierarchical data like expenses nested under specific months. |
+| Authentication     | Supabase Auth           | Manages secure sign-ins (Email/Password) and provides JWT tokens containing custom user metadata (Admin vs. Tenant roles) via Row-Level Security policies.                             |
+| Hosting            | Vercel / Netlify        | Production-grade, secure, and globally distributed hosting to serve the static SPA assets with instant rollbacks and preview deployments per branch.                                   |
 | Client Utilities   | SheetJS (`xlsx`)        | Handles the generation and download of Excel spreadsheets directly within the user's browser, eliminating the need for a backend Excel generator.                                      |
 
 ---
@@ -27,8 +27,8 @@ graph TD
     B -->|Triggers Workflow| C{GitHub Actions}
     C -->|Step 1| D[Lint & Code Check]
     C -->|Step 2| E[Build Production SPA Assets]
-    C -->|Step 3| F[Firebase CLI Authentication]
-    F -->|Step 4| G[Deploy to Firebase Hosting]
+    C -->|Step 3| F[Inject Supabase Environment Secrets]
+    F -->|Step 4| G[Deploy to Vercel / Netlify]
     G -->|Success| H[Live App Updated]
 ```
 
@@ -60,9 +60,9 @@ This compiles, minifies, and optimizes all JavaScript, CSS, and asset files into
 
 ### 4. Authorization & Transfer
 
-Utilizing an encrypted Firebase Service Account Token stored safely within GitHub Secrets, the runner authorizes a direct connection to your Firebase project.
+Utilizing encrypted Supabase credentials (Project URL and Anon Key) stored safely within GitHub Secrets, the runner injects these as environment variables at build time.
 
-The workflow then triggers the Firebase CLI to upload the optimized assets directly to Firebase Hosting servers, instantly switching traffic over to the newest deployment.
+The workflow then triggers the hosting provider CLI (Vercel or Netlify) to upload the optimized assets directly to the CDN edge network, instantly switching traffic over to the newest deployment.
 
 ---
 
@@ -73,11 +73,11 @@ The workflow then triggers the Firebase CLI to upload the optimized assets direc
 Create the following file:
 
 ```text
-.github/workflows/firebase-deploy.yml
+.github/workflows/deploy.yml
 ```
 
 ```yaml
-name: Deploy to Firebase Hosting
+name: Deploy to Vercel
 
 on:
   push:
@@ -104,87 +104,86 @@ jobs:
       - name: Build Application
         run: npm run build
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
-      - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TENANTTRACK }}
-          channelId: live
-          projectId: tenanttrack
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
 ```
 
 ---
 
-## 2. Firebase Project Manifest
+## 2. Supabase Environment Configuration
 
-Create a `firebase.json` file in the root directory:
+Create a `.env.local` file in the root directory (never commit this to version control):
 
-```json
-{
-  "hosting": {
-    "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
-}
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-This configuration ensures Firebase Hosting routes all incoming URLs through `index.html`, allowing React Router (or any SPA router) to manage navigation correctly.
+Initialize the Supabase client in your application:
+
+```typescript
+// src/lib/supabaseClient.ts
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+```
+
+This configuration ensures the Supabase client is initialized once and reused across the entire application.
 
 ---
 
 # 🔒 Security & Access Control Model
 
-Because there is no traditional backend application server to protect the database, security must be enforced directly at the Firebase cloud infrastructure level.
+Because there is no traditional backend application server to protect the database, security must be enforced directly at the Supabase cloud infrastructure level using Row-Level Security (RLS) policies.
 
 ## Role Enforcement
 
-When an account is designated as an Administrator, a Firebase Cloud Function (or manual initialization script) applies a custom claim:
+When an account is designated as an Administrator, a database trigger or initialization script sets a custom metadata flag on the user's profile in the `auth.users` table:
 
 ```json
 {
-  "admin": true
+  "app_metadata": {
+    "role": "admin"
+  }
 }
 ```
 
-This claim becomes part of the authenticated user's JWT token and is available inside Firestore Security Rules.
+This metadata becomes part of the authenticated user's JWT token and is available inside Supabase RLS policies via `auth.jwt()`.
 
-## Firestore Security Rules
+## Row-Level Security (RLS) Policies
 
-The database denies all unauthorized access by default.
+The database denies all unauthorized access by default — RLS is enabled on all tables.
 
 ### Read Operations
 
-Allowed only for authenticated users whose account matches a registered tenant profile.
+Allowed only for authenticated users whose `auth.uid()` matches a registered tenant profile record in the database.
 
 ### Write Operations
 
 Granted strictly when:
 
-```javascript
-request.auth.token.admin == true
+```sql
+(auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
 ```
 
 This ensures that only authorized administrators can create, update, or delete records while tenants retain read-only access where appropriate.
 
 ### Security Principles
 
-* Default-deny access model.
+* Default-deny access model (RLS enabled on all tables).
 * Authentication required for all protected resources.
-* Role-based authorization enforced through Firebase Custom Claims.
-* Firestore rules act as the primary security boundary.
+* Role-based authorization enforced through Supabase JWT app metadata claims.
+* RLS policies act as the primary security boundary at the database layer.
 * No sensitive business logic is exposed through a custom backend server.
-* All communication occurs over HTTPS using Firebase-managed infrastructure.
+* All communication occurs over HTTPS using Supabase-managed infrastructure.
