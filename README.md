@@ -23,7 +23,7 @@ TenantTrack is a simple, mobile-friendly web application designed to manage the 
 
 * **Mobile-Friendly Website**: Responsive design powered by modern frontend frameworks.
 * **Supabase Hosting**: Deployed using **Supabase CLI** and **Vercel** (or Supabase's native edge-hosting capabilities).
-* **Serverless Architecture**: Logic handled via **Supabase Edge Functions** (TypeScript), removing the need for a custom dedicated backend server.
+* **Serverless Architecture**: Logic handled securely via **Supabase Service Role Keys** for admin operations, completely removing the need for Edge Functions or container deployments.
 * **Row-Level Security (RLS)**: Fine-grained access control ensuring tenants only view their own data, while Admins have full access.
 * **User Accounts**: Managed via **Supabase Auth** (Email/Password or Magic Links), integrated with a `roles` table.
 * **Data Export**: Use SQL-based queries to generate CSVs or utilize libraries like `SheetJS` on the client side.
@@ -45,10 +45,10 @@ TenantTrack is a simple, mobile-friendly web application designed to manage the 
 
 ## 📊 Features Roadmap
 
-* **Tenant Portal**: Secure login and dashboard.
-* **Admin Console**: Full CRUD operations for expenses, tenants, and funds.
-* **Reporting**: Automated data fetching for Excel/CSV exports.
-* **Real-time Alerts**: Use Supabase Realtime to update status (Green/Yellow/Red) instantly when a payment is logged.
+* **Tenant Portal**: Secure login and dashboard displaying assigned monthly bills and individual expense shares.
+* **Admin Console**: Full CRUD operations for expenses, tenants, and funds. Includes dynamic expense splitting and automated monthly billing.
+* **Manual Cash Payments**: Admins can log manual cash payments directly on the dashboard for both standard bills and split expenses.
+* **Real-time Alerts**: Statuses (Green/Yellow/Red) update instantly when an Admin logs a payment.
 
 ---
 
